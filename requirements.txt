@@ -1,0 +1,14 @@
+streamlit
+pandas
+numpy
+plotly
+streamlit-aggrid
+requests
+geopandas
+shapely
+pyproj
+fiona
+rtree
+folium
+streamlit-folium
+openpyxl
