@@ -1,0 +1,1 @@
+pip install --upgrade streamlit pandas numpy geopandas shapely plotly folium streamlit-folium
