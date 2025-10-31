@@ -217,6 +217,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Simple PIN gate
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown("<div class='dashboard-title'>🔐 Enter PIN to access dashboard</div>", unsafe_allow_html=True)
+    with st.form("pin_form"):
+        pin_input = st.text_input("Masukkan PIN", type="password", key="pin_input")
+        submit_pin = st.form_submit_button("Masuk")
+    if submit_pin:
+        if pin_input == "1234":
+            st.session_state.authenticated = True
+            st.experimental_rerun()
+        else:
+            st.error("PIN salah. Coba lagi.")
+            st.stop()
+    st.stop()
+
 # Helper functions for data cleaning
 def to_camel_case(s):
     s = re.sub(r'[^0-9a-zA-Z]+', ' ', s)         # ganti non-alphanumeric jadi spasi
@@ -287,13 +305,20 @@ def load_data():
             df_merged[col] = df_merged[col] + timedelta(hours=7)  # ubah ke WIB (UTC+7)
 
     # Geocoding
-    world = gpd.read_file("world_admin.geojson")
+    world = gpd.read_file("world_admin.geojson", engine="pyogrio")
     country_column = "name"
     
     geometry = [Point(xy) for xy in zip(df_merged["longitude"], df_merged["latitude"])]
     df_geo = gpd.GeoDataFrame(df_merged, geometry=geometry, crs="EPSG:4326")
     
-    joined = gpd.sjoin(df_geo, world, how="left", predicate="within")
+    try:
+        joined = gpd.sjoin(df_geo, world, how="left", predicate="within")
+    except Exception:
+        # Fallback if spatial index dependency is unavailable: find country per point
+        joined = df_geo.copy()
+        joined[country_column] = None
+        for idx, row in df_geo.iterrows():
+            joined.at[idx, country_column] = find_country(row.geometry, world, country_column)
     
     missing_countries = joined[joined[country_column].isna()]
     if len(missing_countries) > 0:
